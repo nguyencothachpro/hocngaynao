@@ -32,26 +32,15 @@ export async function removeStudentFromClass(enrollmentId) { const { error } = a
 
 export async function listMyEnrolledClasses(studentId) { const { data, error } = await supabase.from('hn_enrollments').select('id, joined_at, classes:hn_classes(*, courses:hn_courses(*, lessons:hn_lessons(*)), profiles:hn_profiles!hn_classes_teacher_id_fkey(full_name))').eq('student_id', studentId); if (error) throw error; return data.map(e => e.classes).filter(Boolean); }
 
-// Direct lookup avoids the old SQL RPC error: column reference "code" is ambiguous.
+// The class table is intentionally hidden from students until they are enrolled.
+// Therefore joining by code must go through the SECURITY DEFINER RPC.
 export async function joinClassByCode(code) {
   const normalized = String(code || '').trim().toUpperCase();
   if (!normalized) throw new Error('Vui lòng nhập mã lớp.');
-  const { data: authData } = await supabase.auth.getUser();
-  const studentId = authData?.user?.id;
-  if (!studentId) throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
-
-  const { data: cls, error: classError } = await supabase.from('hn_classes')
-    .select('id, name, code, teacher_id, course_id').eq('code', normalized).maybeSingle();
-  if (classError) throw classError;
+  const { data, error } = await supabase.rpc('hn_join_class_by_code', { p_code: normalized });
+  if (error) throw error;
+  const cls = Array.isArray(data) ? data[0] : data;
   if (!cls) throw new Error('Mã lớp không tồn tại.');
-
-  const { data: existing, error: existingError } = await supabase.from('hn_enrollments')
-    .select('id').eq('class_id', cls.id).eq('student_id', studentId).limit(1).maybeSingle();
-  if (existingError) throw existingError;
-  if (existing) return cls;
-
-  const { error: insertError } = await supabase.from('hn_enrollments').insert({ class_id: cls.id, student_id: studentId });
-  if (insertError) throw insertError;
   return cls;
 }
 
