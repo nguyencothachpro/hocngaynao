@@ -28,10 +28,21 @@ export function AdminOverview() {
   const students = users?.filter(u => u.role === 'student').length || 0;
   return (
     <div className="page">
-      <div className="pageTitle">
-        <div><p className="eyebrow">QUẢN TRỊ HỆ THỐNG</p><h1>Tổng quan</h1>
-          <p>Toàn bộ dữ liệu thật, dùng chung cho mọi thiết bị.</p></div>
-      </div>
+      <section className="hero">
+        <div>
+          <p className="eyebrow">QUẢN TRỊ HỆ THỐNG</p>
+          <h1>Tổng quan</h1>
+          <p>Toàn bộ dữ liệu thật, dùng chung cho mọi thiết bị. Số liệu sẽ tăng khi có giáo viên/học viên sử dụng.</p>
+        </div>
+        <a className="primary big" href="/teacher"><BookOpen /> Vào công cụ Giáo viên</a>
+      </section>
+      {users && users.length <= 1 && classes?.length === 0 && (
+        <div className="tipBox" style={{ marginBottom: 20 }}>
+          Hệ thống đang trống vì chưa có ai tạo lớp/khoá học. Bấm <b>"Vào công cụ Giáo viên"</b> ở trên để tự tạo
+          khoá học, tạo lớp, thử Teaching Studio — hoặc vào trang <b>Người dùng</b> để cấp quyền Giáo viên cho
+          tài khoản khác.
+        </div>
+      )}
       <div className="stats">
         <div className="stat"><div><Users /></div><span>Giáo viên</span><b>{loading ? '…' : teachers}</b></div>
         <div className="stat"><div><ShieldCheck /></div><span>Học viên</span><b>{loading ? '…' : students}</b></div>

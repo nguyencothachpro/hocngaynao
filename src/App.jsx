@@ -35,6 +35,7 @@ const NAV = {
     { to: '/admin/users', label: 'Người dùng', icon: <Users /> },
     { to: '/admin/classes', label: 'Lớp học', icon: <School /> },
     { to: '/admin/courses', label: 'Khoá học', icon: <BookOpen /> },
+    { to: '/teacher', label: 'Công cụ Giáo viên', icon: <Clapperboard /> },
   ],
   teacher: [
     { to: '/teacher', label: 'Lớp & khoá học', icon: <LayoutDashboard /> },

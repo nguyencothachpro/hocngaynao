@@ -104,11 +104,17 @@ create trigger hn_on_auth_user_created
   after insert on auth.users
   for each row execute function public.hn_handle_new_user();
 
--- Chặn tự nâng quyền: chỉ admin mới được đổi cột role của người khác
+-- Chặn tự nâng quyền: chỉ admin mới được đổi cột role của người khác.
+-- LƯU Ý: khi auth.uid() là NULL (thao tác trực tiếp qua SQL Editor / service
+-- role, không qua ứng dụng), luôn cho phép — vì chỉ người có quyền truy cập
+-- SQL Editor mới rơi vào trường hợp này, và đây là cách duy nhất để tạo admin
+-- đầu tiên (bootstrap).
 create or replace function public.hn_protect_role_change() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  if new.role is distinct from old.role and not public.hn_is_admin(auth.uid()) then
+  if new.role is distinct from old.role
+     and auth.uid() is not null
+     and not public.hn_is_admin(auth.uid()) then
     raise exception 'Chỉ admin mới có quyền đổi vai trò người dùng';
   end if;
   return new;
