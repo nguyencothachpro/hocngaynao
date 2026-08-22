@@ -4,6 +4,7 @@ import { Radio, ArrowRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { supabase } from '../lib/supabaseClient.js';
 import * as api from '../lib/api.js';
+import '../live-ui.css';
 
 export default function StudentLiveBanner() {
   const { user } = useAuth();
