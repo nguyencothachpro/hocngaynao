@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import * as api from '../lib/api.js';
+import StudioLiveController from '../components/StudioLiveController.jsx';
 
 const KEY = 'teaching-studio-v2';
 const DEFAULT = { title: 'Bài giảng mới', subtitle: '', overlay: 'Tên giáo viên • Khóa học', teleprompter: '', scene: 'lesson', cameraSize: 28, logo: null };
@@ -200,6 +201,7 @@ export default function Studio() {
             <button className={mic ? 'on' : ''} onClick={toggleMic}><Mic /> Micro</button>
             <button className={screen ? 'on' : ''} onClick={toggleScreen}><MonitorUp /> Chia sẻ màn hình</button>
             <div className="spacer" />
+            <StudioLiveController user={user} videoRef={videoRef} audioRef={audioRef} screenRef={screenRef} camera={camera} mic={mic} screen={screen} ensureCamera={toggleCamera} ensureMic={toggleMic} toggleScreen={toggleScreen} />
             {!recording ? <button className="record" onClick={startRecord}><Circle /> Ghi hình</button> : (
               <>
                 <button onClick={togglePause}>{paused ? <Play /> : <Pause />}{paused ? 'Tiếp tục' : 'Tạm dừng'}</button>
