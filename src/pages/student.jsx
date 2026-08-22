@@ -11,6 +11,19 @@ function Toast({ text, onClose }) {
   return <div className="notice">{text}<button onClick={onClose}>×</button></div>;
 }
 
+function youtubeEmbed(url) {
+  if (!url) return '';
+  if (/youtube\.com\/embed\//i.test(url)) return url;
+  const match = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([^?&/]+)/i);
+  return match ? `https://www.youtube.com/embed/${match[1]}` : '';
+}
+
+function drivePreview(url) {
+  if (!url || !/drive\.google\.com/i.test(url)) return '';
+  const fileId = url.match(/\/file\/d\/([^/]+)/i)?.[1] || url.match(/[?&]id=([^&]+)/i)?.[1];
+  return fileId ? `https://drive.google.com/file/d/${fileId}/preview` : '';
+}
+
 // ================= OVERVIEW =================
 export function StudentOverview() {
   const { user } = useAuth();
@@ -158,7 +171,12 @@ export function StudentLesson() {
   const lesson = course?.lessons.find(l => l.id === lessonId);
   if (!course || !lesson) return <div className="fullLoading">Đang tải…</div>;
 
-  const isYoutube = /youtube\.com|youtu\.be/.test(lesson.video_url || '');
+  const rawVideo = lesson.video_url || '';
+  const youtubeUrl = youtubeEmbed(rawVideo);
+  const driveUrl = drivePreview(rawVideo);
+  const isYoutube = !!youtubeUrl;
+  const isDrive = !!driveUrl;
+
   return (
     <div className="page">
       <Link className="backLink" to={`/student/courses/${id}`}><ArrowLeft /> Quay lại</Link>
@@ -177,10 +195,12 @@ export function StudentLesson() {
         </div>
         <div className="lessonViewer">
           <div className="videoBox">
-            {lesson.video_url ? (
+            {rawVideo ? (
               isYoutube
-                ? <iframe title={lesson.title} src={lesson.video_url} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-                : <video src={lesson.video_url} controls style={{ width: '100%', height: '100%' }} />
+                ? <iframe title={lesson.title} src={youtubeUrl} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                : isDrive
+                  ? <iframe title={lesson.title} src={driveUrl} allow="autoplay" allowFullScreen />
+                  : <video src={rawVideo} controls style={{ width: '100%', height: '100%' }} />
             ) : (
               <div><PlayCircle size={56} /><b>Video chưa được đăng</b><span>Giáo viên đang hoàn thiện bài giảng.</span></div>
             )}
