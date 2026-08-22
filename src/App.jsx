@@ -73,6 +73,15 @@ function Shell({ children }) {
   );
 }
 
+function StudioPage() {
+  return (
+    <>
+      <Studio />
+      <Link className="studioLiveLauncher" to="/teacher/live"><span className="pulse" /> Phát trực tiếp</Link>
+    </>
+  );
+}
+
 export default function App() {
   if (!isSupabaseConfigured) return <SetupNotice />;
   return (
@@ -89,7 +98,7 @@ export default function App() {
       <Route path="/teacher" element={<Protected roles={['teacher', 'admin']}><Shell><TeacherOverview /></Shell></Protected>} />
       <Route path="/teacher/classes/:id" element={<Protected roles={['teacher', 'admin']}><Shell><TeacherClass /></Shell></Protected>} />
       <Route path="/teacher/courses/:id" element={<Protected roles={['teacher', 'admin']}><Shell><TeacherCourse /></Shell></Protected>} />
-      <Route path="/teacher/studio" element={<Protected roles={['teacher', 'admin']}><Studio /></Protected>} />
+      <Route path="/teacher/studio" element={<Protected roles={['teacher', 'admin']}><StudioPage /></Protected>} />
       <Route path="/teacher/live" element={<Protected roles={['teacher', 'admin']}><Shell><LiveRoom mode="teacher" /></Shell></Protected>} />
 
       <Route path="/student" element={<Protected roles={['student']}><Shell><StudentOverview /></Shell></Protected>} />
