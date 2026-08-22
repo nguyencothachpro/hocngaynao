@@ -126,10 +126,40 @@ export async function listMyEnrolledClasses(studentId) {
   if (error) throw error;
   return data.map(e => e.classes).filter(Boolean);
 }
+
+// Join directly instead of calling the old RPC. The previous SQL function can
+// fail with PostgreSQL error 42702 ("column reference code is ambiguous")
+// when its local variable has the same name as hn_classes.code.
 export async function joinClassByCode(code) {
-  const { data, error } = await supabase.rpc('hn_join_class_by_code', { p_code: code });
-  if (error) throw error;
-  return data?.[0];
+  const normalized = String(code || '').trim().toUpperCase();
+  if (!normalized) throw new Error('Vui lòng nhập mã lớp.');
+
+  const { data: cls, error: classError } = await supabase
+    .from('hn_classes')
+    .select('id, name, code, teacher_id, course_id')
+    .eq('code', normalized)
+    .maybeSingle();
+  if (classError) throw classError;
+  if (!cls) throw new Error('Mã lớp không tồn tại.');
+
+  const { data: existing, error: existingError } = await supabase
+    .from('hn_enrollments')
+    .select('id')
+    .eq('class_id', cls.id)
+    .maybeSingle();
+  if (existingError && existingError.code !== 'PGRST116') throw existingError;
+  if (existing) return cls;
+
+  const { data: authData } = await supabase.auth.getUser();
+  const studentId = authData?.user?.id;
+  if (!studentId) throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+
+  const { error: insertError } = await supabase.from('hn_enrollments').insert({
+    class_id: cls.id,
+    student_id: studentId,
+  });
+  if (insertError) throw insertError;
+  return cls;
 }
 export async function listMyProgress(studentId) {
   const { data, error } = await supabase.from('hn_lesson_progress').select('*').eq('student_id', studentId);
