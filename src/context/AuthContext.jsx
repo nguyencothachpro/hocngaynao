@@ -11,7 +11,7 @@ export function AuthProvider({ children }) {
   const loadProfile = useCallback(async (userId) => {
     if (!userId) { setProfile(null); return; }
     const { data, error } = await supabase
-      .from('profiles')
+      .from('hn_profiles')
       .select('id, full_name, role, created_at')
       .eq('id', userId)
       .single();

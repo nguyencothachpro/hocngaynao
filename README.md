@@ -25,9 +25,17 @@ không còn là dữ liệu giả trong `localStorage`.
 
 ## Cài đặt (bắt buộc trước khi deploy)
 
-1. Tạo project miễn phí tại [supabase.com](https://supabase.com).
+> **Dùng chung project Supabase với web khác?** Không sao — toàn bộ bảng,
+> hàm và bucket của hocngaynao đều có tiền tố `hn_` (vd `hn_courses`,
+> `hn_profiles`, bucket `hn-lesson-videos`) nên **không đụng chạm** tới bảng
+> của web khác đang chạy chung project (vd một app tên khác có bảng
+> `users`, `products`, `lessons`...). Cứ chạy thẳng file schema, không cần
+> xoá gì cả.
+
+1. Vào project Supabase bạn muốn dùng (tạo mới hoặc dùng project sẵn có).
 2. Vào **SQL Editor**, dán toàn bộ nội dung file [`supabase-schema.sql`](./supabase-schema.sql)
-   và bấm Run. File này tạo bảng, phân quyền (RLS), và bucket lưu video.
+   và bấm Run. File này chỉ tạo các đối tượng có tiền tố `hn_`, an toàn với
+   dữ liệu sẵn có trong project.
 3. Vào **Project Settings → API**, copy `Project URL` và khoá `anon public`.
 4. Trên Vercel: vào project → **Settings → Environment Variables**, thêm:
    - `VITE_SUPABASE_URL` = Project URL
@@ -36,7 +44,7 @@ không còn là dữ liệu giả trong `localStorage`.
 6. Mở web, bấm **Đăng ký** để tạo tài khoản đầu tiên (mặc định là Học viên).
 7. Quay lại Supabase → SQL Editor, chạy:
    ```sql
-   update public.profiles set role = 'admin'
+   update public.hn_profiles set role = 'admin'
    where id = (select id from auth.users where email = 'ban@vidu.com');
    ```
    rồi đăng nhập lại — tài khoản đó sẽ vào thẳng trang quản trị `/admin`.
