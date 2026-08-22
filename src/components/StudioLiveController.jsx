@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Radio, Users, MonitorUp, VideoOff, X } from 'lucide-react';
+import { Radio, Users, MonitorUp, X } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient.js';
 import * as api from '../lib/api.js';
+import '../live-ui.css';
 
 const RTC_CONFIG = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
@@ -74,9 +75,7 @@ export default function StudioLiveController({
       if (e.candidate) send({ kind: 'ice', from: user.id, to: peerId, candidate: e.candidate });
     };
     pc.onconnectionstatechange = () => {
-      if (['failed', 'closed', 'disconnected'].includes(pc.connectionState)) {
-        peersRef.current.delete(peerId);
-      }
+      if (['failed', 'closed', 'disconnected'].includes(pc.connectionState)) peersRef.current.delete(peerId);
     };
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
@@ -85,19 +84,12 @@ export default function StudioLiveController({
   }
 
   async function startLive() {
-    if (!classId) {
-      setNotice('Hãy chọn lớp trước khi phát trực tiếp.');
-      return;
-    }
+    if (!classId) { setNotice('Hãy chọn lớp trước khi phát trực tiếp.'); return; }
     try {
       if (!camera && !screen) await ensureCamera();
       if (!mic) await ensureMic();
-      // Camera/mic state updates are asynchronous, so wait one frame before
-      // reading the media element refs.
       await new Promise(resolve => requestAnimationFrame(resolve));
-      if (!videoRef.current?.srcObject && !screenRef.current?.srcObject) {
-        throw new Error('Chưa có nguồn video. Hãy bật Camera hoặc Chia sẻ màn hình.');
-      }
+      if (!videoRef.current?.srcObject && !screenRef.current?.srcObject) throw new Error('Chưa có nguồn video. Hãy bật Camera hoặc Chia sẻ màn hình.');
       const channel = supabase.channel(`hn-live:${classId}`);
       channelRef.current = channel;
       channel.on('broadcast', { event: 'signal' }, async ({ payload }) => {
@@ -117,9 +109,7 @@ export default function StudioLiveController({
             peersRef.current.delete(payload.from);
             setViewerCount(v => Math.max(0, v - 1));
           }
-        } catch (e) {
-          console.warn('[Teaching Studio live]', e);
-        }
+        } catch (e) { console.warn('[Teaching Studio live]', e); }
       });
       await channel.subscribe(async status => {
         if (status === 'SUBSCRIBED') {
@@ -152,7 +142,6 @@ export default function StudioLiveController({
           <Radio /> LIVE • {viewerCount} học viên
         </button>
       )}
-
       {open && (
         <div className="liveModalOverlay" onMouseDown={e => e.target === e.currentTarget && setOpen(false)}>
           <div className="liveModal">
@@ -177,10 +166,7 @@ export default function StudioLiveController({
           </div>
         </div>
       )}
-
-      {live && (
-        <div className="liveStudioPill"><Radio size={14} /> Đang phát <Users size={14} /> {viewerCount}</div>
-      )}
+      {live && <div className="liveStudioPill"><Radio size={14} /> Đang phát <Users size={14} /> {viewerCount}</div>}
     </>
   );
 }
