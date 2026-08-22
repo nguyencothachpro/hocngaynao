@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Camera, Mic, MonitorUp, Circle, Square, Pause, Play, Pen, FileText, Image, Type,
   Clapperboard, Save, UploadCloud, Trash2, Download, RefreshCw, ArrowLeft, CheckCircle2,
+  Youtube, HardDrive, Upload, Settings2,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import * as api from '../lib/api.js';
@@ -225,13 +226,19 @@ export default function Studio() {
         </section>
         <aside className="right">
           <div className="panel">
-            <div className="panelTitle">BÀI GIẢNG</div>
+            <div className="panelTitle">BÀI GIẢNG <Settings2 size={16} /></div>
             <input value={state.title} onChange={e => patch({ title: e.target.value })} />
             <input value={state.subtitle} onChange={e => patch({ subtitle: e.target.value })} placeholder="Mô tả ngắn" />
           </div>
+          <div className="panel">
+            <div className="panelTitle">XUẤT VIDEO</div>
+            <button className="destination" onClick={() => setNotice('YouTube: cần kết nối Google OAuth trước khi upload trực tiếp')}><Youtube /> YouTube <span>Kết nối</span></button>
+            <button className="destination" onClick={() => setNotice('Google Drive: cần kết nối Google OAuth trước khi upload trực tiếp')}><HardDrive /> Google Drive <span>Kết nối</span></button>
+            <button className="destination" onClick={download} disabled={!downloadUrl}><Upload /> Tải về máy</button>
+          </div>
           <div className="panel tips">
             <b>Kết nối thật</b>
-            <span>Video ghi ở đây có thể tải thẳng lên hệ thống và gắn vào một bài học — học viên trong lớp sẽ xem được ngay.</span>
+            <span>Video ghi ở đây có thể tải lên hệ thống và gắn vào bài học. YouTube và Google Drive được giữ lại làm đích xuất để kết nối OAuth trực tiếp ở bước tiếp theo.</span>
           </div>
         </aside>
       </main>
