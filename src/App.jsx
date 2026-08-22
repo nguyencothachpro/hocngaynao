@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, BookOpen, School, LogOut, Clapperboard, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, School, LogOut, Clapperboard, ShieldCheck, Radio } from 'lucide-react';
 import { useAuth } from './context/AuthContext.jsx';
 import { isSupabaseConfigured } from './lib/supabaseClient.js';
 import Login from './pages/Login.jsx';
@@ -10,6 +10,7 @@ import { AdminOverview, AdminUsers, AdminClasses, AdminCourses } from './pages/a
 import { TeacherOverview, TeacherClass, TeacherCourse } from './pages/teacher.jsx';
 import { StudentOverview, StudentClass, StudentCourse, StudentLesson } from './pages/student.jsx';
 import Studio from './pages/Studio.jsx';
+import LiveRoom from './pages/LiveRoom.jsx';
 
 function Protected({ roles, children }) {
   const { session, role, loading } = useAuth();
@@ -39,9 +40,11 @@ const NAV = {
   teacher: [
     { to: '/teacher', label: 'Lớp & khóa học', icon: <LayoutDashboard /> },
     { to: '/teacher/studio', label: 'Teaching Studio', icon: <Clapperboard /> },
+    { to: '/teacher/live', label: 'Phát trực tiếp', icon: <Radio /> },
   ],
   student: [
     { to: '/student', label: 'Lớp của tôi', icon: <LayoutDashboard /> },
+    { to: '/student/live', label: 'Phòng trực tiếp', icon: <Radio /> },
   ],
 };
 
@@ -76,8 +79,8 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
-
       <Route path="/app" element={<Protected><RoleHome /></Protected>} />
+
       <Route path="/admin" element={<Protected roles={['admin']}><Shell><AdminOverview /></Shell></Protected>} />
       <Route path="/admin/users" element={<Protected roles={['admin']}><Shell><AdminUsers /></Shell></Protected>} />
       <Route path="/admin/classes" element={<Protected roles={['admin']}><Shell><AdminClasses /></Shell></Protected>} />
@@ -87,11 +90,13 @@ export default function App() {
       <Route path="/teacher/classes/:id" element={<Protected roles={['teacher', 'admin']}><Shell><TeacherClass /></Shell></Protected>} />
       <Route path="/teacher/courses/:id" element={<Protected roles={['teacher', 'admin']}><Shell><TeacherCourse /></Shell></Protected>} />
       <Route path="/teacher/studio" element={<Protected roles={['teacher', 'admin']}><Studio /></Protected>} />
+      <Route path="/teacher/live" element={<Protected roles={['teacher', 'admin']}><Shell><LiveRoom mode="teacher" /></Shell></Protected>} />
 
       <Route path="/student" element={<Protected roles={['student']}><Shell><StudentOverview /></Shell></Protected>} />
       <Route path="/student/classes/:id" element={<Protected roles={['student']}><Shell><StudentClass /></Shell></Protected>} />
       <Route path="/student/courses/:id" element={<Protected roles={['student']}><Shell><StudentCourse /></Shell></Protected>} />
       <Route path="/student/courses/:id/lessons/:lessonId" element={<Protected roles={['student']}><Shell><StudentLesson /></Shell></Protected>} />
+      <Route path="/student/live" element={<Protected roles={['student']}><Shell><LiveRoom mode="student" /></Shell></Protected>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
