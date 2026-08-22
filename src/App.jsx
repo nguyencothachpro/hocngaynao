@@ -11,6 +11,7 @@ import { TeacherOverview, TeacherClass, TeacherCourse } from './pages/teacher.js
 import { StudentOverview, StudentClass, StudentCourse, StudentLesson } from './pages/student.jsx';
 import Studio from './pages/Studio.jsx';
 import LiveRoom from './pages/LiveRoom.jsx';
+import StudentLiveBanner from './components/StudentLiveBanner.jsx';
 
 function Protected({ roles, children }) {
   const { session, role, loading } = useAuth();
@@ -40,7 +41,6 @@ const NAV = {
   teacher: [
     { to: '/teacher', label: 'Lớp & khóa học', icon: <LayoutDashboard /> },
     { to: '/teacher/studio', label: 'Teaching Studio', icon: <Clapperboard /> },
-    { to: '/teacher/live', label: 'Phát trực tiếp', icon: <Radio /> },
   ],
   student: [
     { to: '/student', label: 'Lớp của tôi', icon: <LayoutDashboard /> },
@@ -68,17 +68,11 @@ function Shell({ children }) {
           <span>{profile?.full_name}</span><button title="Đăng xuất" onClick={logout}><LogOut /></button>
         </div>
       </header>
-      <main className="portalMain">{children}</main>
+      <main className="portalMain">
+        {role === 'student' && <StudentLiveBanner />}
+        {children}
+      </main>
     </div>
-  );
-}
-
-function StudioPage() {
-  return (
-    <>
-      <Studio />
-      <Link className="studioLiveLauncher" to="/teacher/live"><span className="pulse" /> Phát trực tiếp</Link>
-    </>
   );
 }
 
@@ -98,7 +92,7 @@ export default function App() {
       <Route path="/teacher" element={<Protected roles={['teacher', 'admin']}><Shell><TeacherOverview /></Shell></Protected>} />
       <Route path="/teacher/classes/:id" element={<Protected roles={['teacher', 'admin']}><Shell><TeacherClass /></Shell></Protected>} />
       <Route path="/teacher/courses/:id" element={<Protected roles={['teacher', 'admin']}><Shell><TeacherCourse /></Shell></Protected>} />
-      <Route path="/teacher/studio" element={<Protected roles={['teacher', 'admin']}><StudioPage /></Protected>} />
+      <Route path="/teacher/studio" element={<Protected roles={['teacher', 'admin']}><Studio /></Protected>} />
       <Route path="/teacher/live" element={<Protected roles={['teacher', 'admin']}><Shell><LiveRoom mode="teacher" /></Shell></Protected>} />
 
       <Route path="/student" element={<Protected roles={['student']}><Shell><StudentOverview /></Shell></Protected>} />
