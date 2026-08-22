@@ -4,9 +4,6 @@ import { supabase } from '../lib/supabaseClient.js';
 import * as api from '../lib/api.js';
 import '../live-ui.css';
 
-// WebRTC needs STUN to discover public network addresses. Multiple STUN servers
-// make connection setup more resilient. A TURN server can be added later for
-// restrictive corporate/mobile networks.
 const RTC_CONFIG = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
@@ -30,6 +27,9 @@ export default function StudioLiveController({
   const channelRef = useRef(null);
   const peersRef = useRef(new Map());
   const pendingIceRef = useRef(new Map());
+  const compositeRef = useRef(null);
+  const compositeCanvasRef = useRef(null);
+  const compositeRafRef = useRef(null);
   const [classes, setClasses] = useState([]);
   const [classId, setClassId] = useState('');
   const [live, setLive] = useState(false);
@@ -48,17 +48,22 @@ export default function StudioLiveController({
     };
   }, [user.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  function stopComposite() {
+    if (compositeRafRef.current) cancelAnimationFrame(compositeRafRef.current);
+    compositeRafRef.current = null;
+    if (compositeRef.current) compositeRef.current.getTracks().forEach(t => t.stop());
+    compositeRef.current = null;
+    compositeCanvasRef.current = null;
+  }
+
   function cleanup(sendEnd = true) {
     if (sendEnd && channelRef.current) {
-      channelRef.current.send({
-        type: 'broadcast',
-        event: 'signal',
-        payload: { kind: 'end', from: user.id },
-      }).catch(() => {});
+      channelRef.current.send({ type: 'broadcast', event: 'signal', payload: { kind: 'end', from: user.id } }).catch(() => {});
     }
     peersRef.current.forEach(pc => pc.close());
     peersRef.current.clear();
     pendingIceRef.current.clear();
+    stopComposite();
     if (channelRef.current) supabase?.removeChannel(channelRef.current);
     channelRef.current = null;
     setLive(false);
@@ -69,17 +74,89 @@ export default function StudioLiveController({
     return channelRef.current?.send({ type: 'broadcast', event: 'signal', payload });
   }
 
-  function getLiveStream() {
-    const tracks = [];
-    const video = screenRef?.current?.srcObject?.getVideoTracks?.()[0]
-      || videoRef?.current?.srcObject?.getVideoTracks?.()[0];
-    const audio = audioRef?.current?.getAudioTracks?.()[0];
-    const screenAudio = screenRef?.current?.srcObject?.getAudioTracks?.()[0];
+  function drawCover(ctx, source, w, h) {
+    if (!source || source.readyState < 2 || !source.videoWidth) return false;
+    const sw = source.videoWidth, sh = source.videoHeight;
+    const scale = Math.max(w / sw, h / sh);
+    const dw = sw * scale, dh = sh * scale;
+    ctx.drawImage(source, (w - dw) / 2, (h - dh) / 2, dw, dh);
+    return true;
+  }
 
-    if (video) tracks.push(video);
-    if (audio) tracks.push(audio);
-    if (screen && screenAudio && !audio) tracks.push(screenAudio);
-    return new MediaStream(tracks);
+  function drawComposite() {
+    const canvas = compositeCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    ctx.fillStyle = '#05070d';
+    ctx.fillRect(0, 0, w, h);
+
+    const screenVideo = screenRef?.current;
+    const cameraVideo = videoRef?.current;
+    const hasScreen = !!(screen && screenVideo?.readyState >= 2 && screenVideo.videoWidth);
+    const hasCamera = !!(camera && cameraVideo?.readyState >= 2 && cameraVideo.videoWidth);
+
+    if (hasScreen) {
+      drawCover(ctx, screenVideo, w, h);
+      if (hasCamera) {
+        const camW = Math.round(w * 0.28);
+        const camH = Math.round(camW * 9 / 16);
+        const x = w - camW - 28;
+        const y = 28;
+        ctx.save();
+        ctx.shadowColor = 'rgba(0,0,0,.55)';
+        ctx.shadowBlur = 24;
+        ctx.fillStyle = '#000';
+        ctx.roundRect(x - 3, y - 3, camW + 6, camH + 6, 20);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.roundRect(x, y, camW, camH, 18);
+        ctx.clip();
+        drawCover(ctx, cameraVideo, camW, camH);
+        ctx.restore();
+      }
+    } else if (hasCamera) {
+      drawCover(ctx, cameraVideo, w, h);
+    } else {
+      ctx.fillStyle = '#111827';
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '700 28px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Teaching Studio', w / 2, h / 2 - 12);
+      ctx.font = '18px sans-serif';
+      ctx.fillText('Bật Camera hoặc Chia sẻ màn hình', w / 2, h / 2 + 24);
+      ctx.textAlign = 'left';
+    }
+  }
+
+  function startComposite() {
+    stopComposite();
+    const canvas = document.createElement('canvas');
+    canvas.width = 1280;
+    canvas.height = 720;
+    compositeCanvasRef.current = canvas;
+    const stream = canvas.captureStream(30);
+    compositeRef.current = stream;
+
+    const loop = () => {
+      drawComposite();
+      compositeRafRef.current = requestAnimationFrame(loop);
+    };
+    loop();
+    return stream;
+  }
+
+  function getLiveStream() {
+    const videoStream = startComposite();
+    const audioTracks = [];
+    const micTrack = audioRef?.current?.getAudioTracks?.()[0];
+    const screenAudio = screenRef?.current?.srcObject?.getAudioTracks?.()[0];
+    if (micTrack) audioTracks.push(micTrack);
+    if (screenAudio && !micTrack) audioTracks.push(screenAudio);
+    audioTracks.forEach(t => videoStream.addTrack(t));
+    return videoStream;
   }
 
   async function flushIce(peerId, pc) {
@@ -101,9 +178,7 @@ export default function StudioLiveController({
     stream.getTracks().forEach(track => pc.addTrack(track, stream));
 
     pc.onicecandidate = e => {
-      if (e.candidate) {
-        send({ kind: 'ice', from: user.id, to: peerId, candidate: e.candidate });
-      }
+      if (e.candidate) send({ kind: 'ice', from: user.id, to: peerId, candidate: e.candidate });
     };
     pc.onconnectionstatechange = () => {
       if (['failed', 'closed'].includes(pc.connectionState)) {
@@ -141,7 +216,7 @@ export default function StudioLiveController({
         try {
           if (payload.kind === 'join') {
             await createPeer(payload.from);
-            setViewerCount(v => v + 1);
+            setViewerCount(v => Math.max(v, peersRef.current.size));
           } else if (payload.kind === 'answer') {
             const pc = peersRef.current.get(payload.from);
             if (pc) {
@@ -161,7 +236,7 @@ export default function StudioLiveController({
             peersRef.current.get(payload.from)?.close();
             peersRef.current.delete(payload.from);
             pendingIceRef.current.delete(payload.from);
-            setViewerCount(v => Math.max(0, v - 1));
+            setViewerCount(peersRef.current.size);
           }
         } catch (e) {
           console.warn('[Teaching Studio live]', e);
@@ -173,7 +248,7 @@ export default function StudioLiveController({
           await channel.track({ user_id: user.id, role: 'teacher', live: true, class_id: classId });
           setLive(true);
           setOpen(false);
-          setNotice('ĐANG LIVE — học viên có thể vào xem trực tiếp.');
+          setNotice(screen ? 'ĐANG LIVE — màn hình + camera đang phát.' : 'ĐANG LIVE — camera đang phát. Bấm Chia sẻ màn hình để đưa PDF/màn hình vào luồng.');
         }
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           setNotice('Kết nối livestream không ổn định. Vui lòng thử lại.');
@@ -207,7 +282,7 @@ export default function StudioLiveController({
         <div className="liveModalOverlay" onMouseDown={e => e.target === e.currentTarget && setOpen(false)}>
           <div className="liveModal">
             <div className="liveModalHead">
-              <div><b>Phát trực tiếp ngay trong Teaching Studio</b><span>Không mở tab mới. Camera, micro và màn hình vẫn điều khiển ở đây.</span></div>
+              <div><b>Phát trực tiếp ngay trong Teaching Studio</b><span>Không mở tab mới. Màn hình/PDF sẽ là hình chính, camera giáo viên tự nổi ở góc.</span></div>
               <button onClick={() => setOpen(false)}><X /></button>
             </div>
             <label>Lớp học đang phát</label>
@@ -216,13 +291,14 @@ export default function StudioLiveController({
               {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
             <div className="liveChecks">
-              <span className={camera || screen ? 'ok' : ''}>● Video: {screen ? 'màn hình' : camera ? 'camera' : 'chưa bật'}</span>
+              <span className={camera || screen ? 'ok' : ''}>● Video: {screen ? 'màn hình + camera' : camera ? 'camera' : 'chưa bật'}</span>
               <span className={mic ? 'ok' : ''}>● Micro: {mic ? 'đã bật' : 'sẽ tự bật khi phát'}</span>
             </div>
             <div className="liveModalActions">
               <button className="secondary" onClick={toggleScreen}><MonitorUp /> {screen ? 'Dừng chia sẻ' : 'Chia sẻ màn hình'}</button>
               <button className="primary liveStart" disabled={!classId} onClick={startLive}><Radio /> Bắt đầu LIVE</button>
             </div>
+            <p className="liveNotice">Để học viên thấy PDF/bảng đang dạy, hãy bấm <b>Chia sẻ màn hình</b> và chọn đúng cửa sổ Teaching Studio.</p>
             {notice && <p className="liveNotice">{notice}</p>}
           </div>
         </div>
