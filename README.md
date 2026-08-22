@@ -1,63 +1,64 @@
-# Học Ngày Nào — Teaching Studio V2
+# Học Ngày Nào — v0.4 (bản có backend thật)
 
-Teaching Studio là **Web OBS dành cho giáo viên**, chạy hoàn toàn trong trình duyệt và không cần cài OBS Desktop.
+Nền tảng học online với 3 vai trò thật: **Admin / Giáo viên / Học viên**, dữ liệu
+lưu trên Supabase (Postgres + Auth + Storage) — dùng chung cho mọi thiết bị,
+không còn là dữ liệu giả trong `localStorage`.
 
-## Có thể test ngay
+## Tính năng thật đã có
 
-- Scene: Giảng bài / Chữa bài / Toàn cảnh
-- Camera và thay đổi kích thước camera
-- Micro với echo cancellation / noise suppression
-- Chia sẻ màn hình, cửa sổ hoặc tab
-- Thu cả âm thanh máy nếu trình duyệt cung cấp track audio
-- Ghép camera + màn hình + bảng + overlay + logo + teleprompter thành **một video WebM**
-- Tạm dừng / tiếp tục / dừng ghi
-- Tải video về máy
-- Bảng viết Canvas
-- Mở PDF trong studio
-- Text / overlay
-- Logo upload
-- Teleprompter
-- Tạo và tải thumbnail
-- Tự lưu cấu hình vào LocalStorage
-- Responsive UI
+- **Đăng ký / đăng nhập thật** bằng email + mật khẩu (Supabase Auth).
+- **Phân quyền 3 vai trò** với Row Level Security ở tầng database (không thể
+  tự nâng quyền qua console trình duyệt).
+- **Admin**: xem toàn bộ người dùng, đổi vai trò (Học viên ⇄ Giáo viên ⇄
+  Admin), xem/xoá mọi lớp học và khoá học trong hệ thống.
+- **Giáo viên**: tạo khoá học, thêm/sửa/xoá bài học, tạo lớp học (sinh mã tham
+  gia tự động), xem danh sách học viên đã tham gia lớp.
+- **Học viên**: tham gia lớp bằng mã, xem danh sách khoá học đã đăng ký, xem
+  video bài giảng, đánh dấu hoàn thành bài học, ghi chú/nộp bài ngắn — tất cả
+  lưu thật vào database và giáo viên xem được tiến độ.
+- **Teaching Studio** quay bài giảng (camera + màn hình + mic + bảng viết)
+  ngay trên trình duyệt, sau đó **tải thẳng lên Supabase Storage và gắn vào
+  một bài học** — học viên trong lớp xem được ngay, không cần tải xuống rồi
+  gửi tay.
+- Điều hướng bằng URL thật (`/admin`, `/teacher`, `/student/...`) với
+  `vercel.json` rewrite nên **F5 hoặc mở thẳng link không còn bị lỗi 404**.
 
-## Test nhanh
+## Cài đặt (bắt buộc trước khi deploy)
+
+1. Tạo project miễn phí tại [supabase.com](https://supabase.com).
+2. Vào **SQL Editor**, dán toàn bộ nội dung file [`supabase-schema.sql`](./supabase-schema.sql)
+   và bấm Run. File này tạo bảng, phân quyền (RLS), và bucket lưu video.
+3. Vào **Project Settings → API**, copy `Project URL` và khoá `anon public`.
+4. Trên Vercel: vào project → **Settings → Environment Variables**, thêm:
+   - `VITE_SUPABASE_URL` = Project URL
+   - `VITE_SUPABASE_ANON_KEY` = anon public key
+5. Redeploy.
+6. Mở web, bấm **Đăng ký** để tạo tài khoản đầu tiên (mặc định là Học viên).
+7. Quay lại Supabase → SQL Editor, chạy:
+   ```sql
+   update public.profiles set role = 'admin'
+   where id = (select id from auth.users where email = 'ban@vidu.com');
+   ```
+   rồi đăng nhập lại — tài khoản đó sẽ vào thẳng trang quản trị `/admin`.
+
+Từ đó, admin dùng trang **Người dùng** để cấp quyền Giáo viên cho các tài
+khoản khác — không cần chạy SQL nữa.
+
+## Chạy local
 
 ```bash
 npm install
+cp .env.example .env.local   # rồi điền 2 biến VITE_SUPABASE_*
 npm run dev
 ```
 
-Mở bằng **Chrome hoặc Edge**. Camera, micro và screen capture cần `localhost` hoặc HTTPS.
+## Giới hạn hiện tại (để biết mà nâng cấp tiếp)
 
-### Quy trình test đề nghị
-
-1. Bấm **Camera** và cho phép camera.
-2. Bấm **Micro** và cho phép micro.
-3. Bấm **Chia sẻ màn hình** → chọn màn hình/cửa sổ/tab → nếu muốn thu tiếng máy, bật **Chia sẻ âm thanh**.
-4. Chọn Scene.
-5. Thay đổi Overlay, Teleprompter và kích thước Camera.
-6. Bấm **Ghi hình**.
-7. Nói, thao tác trên màn hình và thử **Tạm dừng / Tiếp tục**.
-8. Bấm **Dừng** → **Tải video**.
-
-Video được encode ngay trên máy người dùng; server không nhận file video.
-
-## Google Drive / YouTube
-
-Giao diện đã có nút kết nối. Để upload thật vào tài khoản Google của từng giáo viên cần cấu hình Google OAuth Client ID cho domain. **Không đưa Client Secret vào frontend.** Sau khi có Client ID, có thể nối Google Drive resumable upload và YouTube upload trực tiếp mà không cần server chứa video.
-
-## CI
-
-`.github/workflows/build.yml` chạy `npm install` và `npm run build` trên Node 20 khi có push/PR vào `main`.
-
-## Định hướng tiếp theo
-
-- Google OAuth thật + upload Drive/YouTube
-- Resumable upload và tiến trình upload
-- MP4/WebCodecs khi trình duyệt hỗ trợ
-- Auto chapter
-- Scene editor kéo-thả
-- Khôi phục recording sau khi trình duyệt gặp sự cố
-- Hotkeys
-- Noise suppression nâng cao
+- Storage bucket video đang để `public` để đơn giản hoá — ai có link đều xem
+  được (không cần đăng nhập). Muốn khoá theo lớp học cần chuyển sang signed
+  URL.
+- Chưa có xoá tài khoản người dùng (chỉ đổi vai trò) — xoá tài khoản
+  `auth.users` cần service-role key nên phải làm qua Supabase Dashboard hoặc
+  một Vercel Serverless Function riêng.
+- Chưa có bài kiểm tra/trắc nghiệm có chấm điểm tự động — hiện là ô ghi
+  chú/nộp bài dạng text tự do.
