@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
-import {
-  LayoutDashboard, Users, BookOpen, School, LogOut, Clapperboard, ShieldCheck,
-} from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, School, LogOut, Clapperboard, ShieldCheck } from 'lucide-react';
 import { useAuth } from './context/AuthContext.jsx';
 import { isSupabaseConfigured } from './lib/supabaseClient.js';
 import Login from './pages/Login.jsx';
+import Home from './pages/Home.jsx';
 import SetupNotice from './pages/SetupNotice.jsx';
 import { AdminOverview, AdminUsers, AdminClasses, AdminCourses } from './pages/admin.jsx';
 import { TeacherOverview, TeacherClass, TeacherCourse } from './pages/teacher.jsx';
@@ -34,11 +33,11 @@ const NAV = {
     { to: '/admin', label: 'Tổng quan', icon: <LayoutDashboard /> },
     { to: '/admin/users', label: 'Người dùng', icon: <Users /> },
     { to: '/admin/classes', label: 'Lớp học', icon: <School /> },
-    { to: '/admin/courses', label: 'Khoá học', icon: <BookOpen /> },
+    { to: '/admin/courses', label: 'Khóa học', icon: <BookOpen /> },
     { to: '/teacher', label: 'Công cụ Giáo viên', icon: <Clapperboard /> },
   ],
   teacher: [
-    { to: '/teacher', label: 'Lớp & khoá học', icon: <LayoutDashboard /> },
+    { to: '/teacher', label: 'Lớp & khóa học', icon: <LayoutDashboard /> },
     { to: '/teacher/studio', label: 'Teaching Studio', icon: <Clapperboard /> },
   ],
   student: [
@@ -54,21 +53,16 @@ function Shell({ children }) {
   return (
     <div className="portal">
       <header className="portalHeader">
-        <div className="portalBrand">
+        <Link to="/" className="portalBrand">
           <div className="portalLogo">HN</div>
-          <div><b>Học Ngày Nào</b><span>Nền tảng học online</span></div>
-        </div>
-        <nav>
-          {items.map(it => (
-            <Link key={it.to} to={it.to} className="navLinkBtn">{it.icon} {it.label}</Link>
-          ))}
-        </nav>
+          <div><b>Học Ngay Nào</b><span>Nền tảng học online</span></div>
+        </Link>
+        <nav>{items.map(it => <Link key={it.to} to={it.to} className="navLinkBtn">{it.icon} {it.label}</Link>)}</nav>
         <div className="account">
           {role === 'admin' && <span className="roleTag admin"><ShieldCheck size={13} /> Admin</span>}
           {role === 'teacher' && <span className="roleTag teacher">Giáo viên</span>}
           {role === 'student' && <span className="roleTag student">Học viên</span>}
-          <span>{profile?.full_name}</span>
-          <button title="Đăng xuất" onClick={logout}><LogOut /></button>
+          <span>{profile?.full_name}</span><button title="Đăng xuất" onClick={logout}><LogOut /></button>
         </div>
       </header>
       <main className="portalMain">{children}</main>
@@ -80,9 +74,10 @@ export default function App() {
   if (!isSupabaseConfigured) return <SetupNotice />;
   return (
     <Routes>
+      <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/" element={<Protected><RoleHome /></Protected>} />
 
+      <Route path="/app" element={<Protected><RoleHome /></Protected>} />
       <Route path="/admin" element={<Protected roles={['admin']}><Shell><AdminOverview /></Shell></Protected>} />
       <Route path="/admin/users" element={<Protected roles={['admin']}><Shell><AdminUsers /></Shell></Protected>} />
       <Route path="/admin/classes" element={<Protected roles={['admin']}><Shell><AdminClasses /></Shell></Protected>} />
