@@ -32,13 +32,21 @@ export async function removeStudentFromClass(enrollmentId) { const { error } = a
 
 export async function listMyEnrolledClasses(studentId) { const { data, error } = await supabase.from('hn_enrollments').select('id, joined_at, classes:hn_classes(*, courses:hn_courses(*, lessons:hn_lessons(*)), profiles:hn_profiles!hn_classes_teacher_id_fkey(full_name))').eq('student_id', studentId); if (error) throw error; return data.map(e => e.classes).filter(Boolean); }
 
-// The class table is intentionally hidden from students until they are enrolled.
-// Therefore joining by code must go through the SECURITY DEFINER RPC.
+// Join is intentionally done through a SECURITY DEFINER RPC because RLS hides
+// hn_classes from students until they are enrolled. The SQL function must use
+// qualified column names because RETURNS TABLE(id,name,code) creates output
+// variables with the same names.
 export async function joinClassByCode(code) {
   const normalized = String(code || '').trim().toUpperCase();
   if (!normalized) throw new Error('Vui lòng nhập mã lớp.');
   const { data, error } = await supabase.rpc('hn_join_class_by_code', { p_code: normalized });
-  if (error) throw error;
+  if (error) {
+    const message = String(error.message || '');
+    if (/ambiguous|column reference.*code/i.test(message)) {
+      throw new Error('Cơ sở dữ liệu đang dùng bản RPC cũ. Hãy chạy file supabase-fix-join-class.sql trong Supabase SQL Editor rồi thử lại.');
+    }
+    throw error;
+  }
   const cls = Array.isArray(data) ? data[0] : data;
   if (!cls) throw new Error('Mã lớp không tồn tại.');
   return cls;
