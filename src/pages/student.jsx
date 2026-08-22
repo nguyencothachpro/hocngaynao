@@ -20,7 +20,9 @@ function youtubeEmbed(url) {
 
 function drivePreview(url) {
   if (!url || !/drive\.google\.com/i.test(url)) return '';
-  const fileId = url.match(/\/file\/d\/([^/]+)/i)?.[1] || url.match(/[?&]id=([^&]+)/i)?.[1];
+  const fileMatch = url.match(/\/file\/d\/([^/]+)/i);
+  const queryMatch = url.match(/[?&]id=([^&]+)/i);
+  const fileId = fileMatch ? fileMatch[1] : queryMatch ? queryMatch[1] : '';
   return fileId ? `https://drive.google.com/file/d/${fileId}/preview` : '';
 }
 
@@ -174,8 +176,16 @@ export function StudentLesson() {
   const rawVideo = lesson.video_url || '';
   const youtubeUrl = youtubeEmbed(rawVideo);
   const driveUrl = drivePreview(rawVideo);
-  const isYoutube = !!youtubeUrl;
-  const isDrive = !!driveUrl;
+  let videoContent;
+  if (!rawVideo) {
+    videoContent = <div><PlayCircle size={56} /><b>Video chưa được đăng</b><span>Giáo viên đang hoàn thiện bài giảng.</span></div>;
+  } else if (youtubeUrl) {
+    videoContent = <iframe title={lesson.title} src={youtubeUrl} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />;
+  } else if (driveUrl) {
+    videoContent = <iframe title={lesson.title} src={driveUrl} allow="autoplay" allowFullScreen />;
+  } else {
+    videoContent = <video src={rawVideo} controls style={{ width: '100%', height: '100%' }} />;
+  }
 
   return (
     <div className="page">
@@ -194,17 +204,7 @@ export function StudentLesson() {
           ))}
         </div>
         <div className="lessonViewer">
-          <div className="videoBox">
-            {rawVideo ? (
-              isYoutube
-                ? <iframe title={lesson.title} src={youtubeUrl} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-                : isDrive
-                  ? <iframe title={lesson.title} src={driveUrl} allow="autoplay" allowFullScreen />
-                  : <video src={rawVideo} controls style={{ width: '100%', height: '100%' }} />
-            ) : (
-              <div><PlayCircle size={56} /><b>Video chưa được đăng</b><span>Giáo viên đang hoàn thiện bài giảng.</span></div>
-            )}
-          </div>
+          <div className="videoBox">{videoContent}</div>
           <h2>{lesson.title}</h2>
           <div className="lessonMeta">
             <button className={completed ? 'doneBtn active' : 'doneBtn'} onClick={() => markComplete(!completed)}>
